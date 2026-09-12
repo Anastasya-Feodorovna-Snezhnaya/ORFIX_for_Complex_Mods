@@ -744,7 +744,7 @@ class App:
             messagebox.showinfo("尚未加载内容", "请先扫描 ini 文件。")
             return
 
-        if not messagebox.askyesno("应用更改", "应用更改 and create timestamp backups?"):
+        if not messagebox.askyesno("应用更改", "应用更改并创建带时间戳的备份文件吗？"):
             return
 
         self.log_line("--- 应用 ---")
