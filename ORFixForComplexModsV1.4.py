@@ -18,11 +18,19 @@ ACTION_ORFIX = "ORFix"
 ACTION_NNFIX = "NNFix"
 ACTION_SKIP = "Skip"
 ACTION_REMOVE = "Remove runs"
+
+ACTION_LABELS = {
+    ACTION_AUTO: "自动",
+    ACTION_ORFIX: "ORFix",
+    ACTION_NNFIX: "NNFix",
+    ACTION_SKIP: "跳过",
+    ACTION_REMOVE: "移除运行项",
+}
 ALL_ACTIONS = [ACTION_AUTO, ACTION_ORFIX, ACTION_NNFIX, ACTION_SKIP, ACTION_REMOVE]
 
 
 @dataclass
-class SectionInfo:
+class 区段Info:
     header: str
     body: list[str]
     kind: str
@@ -126,9 +134,9 @@ def find_commandlist_refs(body: list[str]) -> list[str]:
     return sorted(set(refs))
 
 
-def scan_ini_files(base_dir: str, recursive: bool) -> tuple[list[str], list[SectionInfo]]:
+def scan_ini_files(base_dir: str, recursive: bool) -> tuple[list[str], list[区段Info]]:
     ini_files: list[str] = []
-    found_sections: list[SectionInfo] = []
+    found_sections: list[区段Info] = []
 
     for root, _, files in os.walk(base_dir, topdown=True):
         if not recursive and os.path.abspath(root) != os.path.abspath(base_dir):
@@ -158,7 +166,7 @@ def scan_ini_files(base_dir: str, recursive: bool) -> tuple[list[str], list[Sect
                 refs = find_commandlist_refs(body)
 
                 found_sections.append(
-                    SectionInfo(
+                    区段Info(
                         header=header,
                         body=body,
                         kind=kind,
@@ -317,7 +325,7 @@ def rebuild_ini_text(sections: list[tuple[str | None, list[str]]]) -> list[str]:
 class App:
     def __init__(self, root: Tk):
         self.root = root
-        self.root.title("ORFix/NNFix Section GUI")
+        self.root.title("ORFix/NNFix 区段管理工具")
         self.root.geometry("1400x850")
 
         if getattr(sys, "frozen", False):
@@ -334,8 +342,8 @@ class App:
         self.theme_mode = StringVar(value="Dark")
 
         self.ini_files: list[str] = []
-        self.sections: list[SectionInfo] = []
-        self.section_map: dict[str, SectionInfo] = {}
+        self.sections: list[区段Info] = []
+        self.section_map: dict[str, 区段Info] = {}
 
         self._build_ui()
 
@@ -343,12 +351,12 @@ class App:
         top = ttk.Frame(self.root, padding=8)
         top.pack(fill=X)
 
-        ttk.Label(top, text="Folder:").pack(side=LEFT)
+        ttk.Label(top, text="文件夹：").pack(side=LEFT)
         ttk.Entry(top, textvariable=self.base_dir, width=70).pack(side=LEFT, padx=6)
-        ttk.Button(top, text="Browse", command=self.pick_folder).pack(side=LEFT)
-        ttk.Checkbutton(top, text="Scan subfolders", variable=self.recursive).pack(side=LEFT, padx=10)
-        ttk.Button(top, text="Scan .ini files", command=self.scan).pack(side=LEFT, padx=10)
-        ttk.Label(top, text="Theme:").pack(side=LEFT, padx=(14, 4))
+        ttk.Button(top, text="浏览", command=self.pick_folder).pack(side=LEFT)
+        ttk.Checkbutton(top, text="扫描子文件夹", variable=self.recursive).pack(side=LEFT, padx=10)
+        ttk.Button(top, text="扫描 .ini 文件", command=self.scan).pack(side=LEFT, padx=10)
+        ttk.Label(top, text="主题：").pack(side=LEFT, padx=(14, 4))
         theme_combo = ttk.Combobox(top, textvariable=self.theme_mode, values=["Dark", "Light"], width=8, state="readonly")
         theme_combo.pack(side=LEFT)
         theme_combo.bind("<<ComboboxSelected>>", lambda _e: self.apply_theme())
@@ -356,19 +364,19 @@ class App:
         tools = ttk.Frame(self.root, padding=8)
         tools.pack(fill=X)
 
-        ttk.Label(tools, text="Set action for selected:").pack(side=LEFT)
+        ttk.Label(tools, text="为选中项设置操作：").pack(side=LEFT)
         for action in ALL_ACTIONS:
-            ttk.Button(tools, text=action, command=lambda a=action: self.set_selected_action(a)).pack(side=LEFT, padx=3)
+            ttk.Button(tools, text=ACTION_LABELS.get(action, action), command=lambda a=action: self.set_selected_action(a)).pack(side=LEFT, padx=3)
 
-        ttk.Button(tools, text="Set Skip for all", command=self.set_all_skip).pack(side=LEFT, padx=10)
-        ttk.Button(tools, text="Set Auto for all", command=self.set_all_auto).pack(side=LEFT, padx=5)
+        ttk.Button(tools, text="将全部设为跳过", command=self.set_all_skip).pack(side=LEFT, padx=10)
+        ttk.Button(tools, text="将全部设为自动", command=self.set_all_auto).pack(side=LEFT, padx=5)
 
         rename_frame = ttk.Frame(self.root, padding=8)
         rename_frame.pack(fill=X)
 
         ttk.Checkbutton(
             rename_frame,
-            text="Optional rare-case tool: rename ps-t69 lines",
+            text="可选的特殊工具：重命名 ps-t69 行",
             variable=self.rename_ps_t69_enabled,
         ).pack(side=LEFT)
 
@@ -378,7 +386,7 @@ class App:
 
         ttk.Label(
             rename_frame,
-            text="(Use only in very rare cases)",
+            text="（仅在极少数情况下使用）",
             foreground="#aa5500",
         ).pack(side=LEFT, padx=10)
 
@@ -391,12 +399,12 @@ class App:
             show="headings",
             selectmode="extended",
         )
-        self.tree.heading("action", text="Action")
-        self.tree.heading("section", text="Section")
-        self.tree.heading("kind", text="Type")
-        self.tree.heading("detected", text="Detected ps-t pattern")
-        self.tree.heading("current", text="Current ORFix/NNFix run")
-        self.tree.heading("file", text="File")
+        self.tree.heading("action", text="操作")
+        self.tree.heading("section", text="区段")
+        self.tree.heading("kind", text="类型")
+        self.tree.heading("detected", text="检测到的 ps-t 模式")
+        self.tree.heading("current", text="当前 ORFix/NNFix 运行项")
+        self.tree.heading("file", text="文件")
 
         self.tree.column("action", width=100)
         self.tree.column("section", width=320)
@@ -415,7 +423,7 @@ class App:
         self.copy_to_commandlists = BooleanVar(value=False)
         ttk.Checkbutton(
             opts,
-            text="If TextureOverride adds ORFix/NNFix, also add same run to referenced [CommandList...] section(s)",
+            text="如果 TextureOverride 添加 ORFix/NNFix，也在其引用的 [CommandList...] 区段中添加相同运行项",
             variable=self.copy_to_commandlists,
         ).pack(side=LEFT)
 
@@ -423,24 +431,24 @@ class App:
         opts2.pack(fill=X)
         ttk.Checkbutton(
             opts2,
-            text="Complex-mod safe mode: keep ORFix/NNFix run lines in place (do not move them)",
+            text="复杂模组安全模式：保持 ORFix/NNFix 运行行原位（不移动）",
             variable=self.keep_runs_in_place,
         ).pack(side=LEFT)
         ttk.Checkbutton(
             opts2,
-            text="Keep existing correct ORFix/NNFix line position (do not reorder)",
+            text="保持现有正确的 ORFix/NNFix 行位置（不重新排序）",
             variable=self.preserve_existing_position,
         ).pack(side=LEFT, padx=20)
         ttk.Checkbutton(
             opts2,
-            text="Create backup files on apply",
+            text="应用时创建备份文件",
             variable=self.create_backups,
         ).pack(side=LEFT, padx=20)
 
         bottom = ttk.Frame(self.root, padding=8)
         bottom.pack(fill=BOTH, expand=False)
-        ttk.Button(bottom, text="Preview changes", command=self.preview).pack(side=LEFT)
-        ttk.Button(bottom, text="Apply changes", command=self.apply).pack(side=LEFT, padx=10)
+        ttk.Button(bottom, text="预览更改", command=self.preview).pack(side=LEFT)
+        ttk.Button(bottom, text="应用更改", command=self.apply).pack(side=LEFT, padx=10)
 
         split = ttk.Panedwindow(self.root, orient="horizontal")
         split.pack(fill=BOTH, expand=True, padx=8, pady=8)
@@ -450,11 +458,11 @@ class App:
         split.add(left_panel, weight=1)
         split.add(right_panel, weight=3)
 
-        ttk.Label(left_panel, text="Activity log", padding=(0, 0)).pack(fill=X)
+        ttk.Label(left_panel, text="活动日志", padding=(0, 0)).pack(fill=X)
         self.log = Text(left_panel, height=20)
         self.log.pack(fill=BOTH, expand=True)
 
-        ttk.Label(right_panel, text="Preview (ini diff)", padding=(0, 0)).pack(fill=X)
+        ttk.Label(right_panel, text="预览（ini 差异）", padding=(0, 0)).pack(fill=X)
         self.preview_text = Text(right_panel, height=20)
         self.preview_text.pack(fill=BOTH, expand=True)
 
@@ -532,10 +540,10 @@ class App:
                 parent=self.root,
                 initialdir=initial,
                 mustexist=True,
-                title="Select folder with ini files",
+                title="选择包含 ini 文件的文件夹",
             )
         except Exception as exc:
-            messagebox.showerror("Browse failed", f"Could not open folder picker:\n{exc}")
+            messagebox.showerror("浏览 failed", f"Could not open folder picker:\n{exc}")
             return
 
         if picked:
@@ -548,7 +556,7 @@ class App:
     def scan(self) -> None:
         base_dir = self.base_dir.get().strip()
         if not base_dir or not os.path.isdir(base_dir):
-            messagebox.showerror("Invalid folder", "Select a valid folder first.")
+            messagebox.showerror("文件夹无效", "请先选择有效的文件夹。")
             return
 
         self.ini_files, self.sections = scan_ini_files(base_dir, self.recursive.get())
@@ -579,7 +587,7 @@ class App:
     def set_selected_action(self, action: str) -> None:
         selected = self.tree.selection()
         if not selected:
-            messagebox.showinfo("No selection", "Select one or more sections first.")
+            messagebox.showinfo("未选择", "请先选择一个或多个区段。")
             return
 
         for iid in selected:
@@ -611,7 +619,7 @@ class App:
         change_log_per_file: dict[str, list[str]] = {}
         output_lines_per_file: dict[str, list[str]] = {}
 
-        sections_by_file: dict[str, list[SectionInfo]] = {}
+        sections_by_file: dict[str, list[区段Info]] = {}
         for sec in self.sections:
             sections_by_file.setdefault(sec.file_path, []).append(sec)
 
@@ -690,21 +698,21 @@ class App:
                     if self.create_backups.get():
                         local_changes.insert(0, f"Backup: {backup_path}")
                     else:
-                        local_changes.insert(0, "Backup: disabled")
+                        local_changes.insert(0, "备份：已禁用")
 
         return change_log_per_file, output_lines_per_file
 
     def preview(self) -> None:
-        self.log_line("--- Preview ---")
+        self.log_line("--- 预览 ---")
         self.preview_text.delete("1.0", END)
         change_log, output_lines_per_file = self._build_preview_or_output(write_files=False)
         if not change_log:
-            self.log_line("No changes detected with current action settings.")
-            self.preview_text.insert(END, "No changes detected with current action settings.\n")
+            self.log_line("根据当前操作设置，未检测到更改。")
+            self.preview_text.insert(END, "根据当前操作设置，未检测到更改。\n")
             return
 
         for fpath, changes in change_log.items():
-            self.log_line(f"File: {fpath}")
+            self.log_line(f"文件: {fpath}")
             for c in changes:
                 self.log_line(f"  - {c}")
 
@@ -724,25 +732,25 @@ class App:
             )
 
             if diff_lines:
-                self.preview_text.insert(END, f"File: {fpath}\n")
+                self.preview_text.insert(END, f"文件: {fpath}\n")
                 for line in diff_lines:
                     self.preview_text.insert(END, line + "\n")
                 self.preview_text.insert(END, "\n")
             else:
-                self.preview_text.insert(END, f"File: {fpath}\n(No textual diff)\n\n")
+                self.preview_text.insert(END, f"文件: {fpath}\n(No textual diff)\n\n")
 
     def apply(self) -> None:
         if not self.ini_files:
-            messagebox.showinfo("Nothing loaded", "Scan ini files first.")
+            messagebox.showinfo("尚未加载内容", "请先扫描 ini 文件。")
             return
 
-        if not messagebox.askyesno("Apply changes", "Apply changes and create timestamp backups?"):
+        if not messagebox.askyesno("应用更改", "应用更改 and create timestamp backups?"):
             return
 
-        self.log_line("--- Apply ---")
+        self.log_line("--- 应用 ---")
         change_log, _ = self._build_preview_or_output(write_files=True)
         if not change_log:
-            self.log_line("No changes applied (nothing to change).")
+            self.log_line("未应用更改（没有需要更改的内容）。")
             return
 
         changed_files = 0
@@ -752,8 +760,8 @@ class App:
             for c in changes:
                 self.log_line(f"  - {c}")
 
-        self.log_line(f"Done. Updated {changed_files} file(s).")
-        messagebox.showinfo("Done", f"Updated {changed_files} file(s).")
+        self.log_line(f"完成. Updated {changed_files} file(s).")
+        messagebox.showinfo("完成", f"Updated {changed_files} file(s).")
 
 
 def main() -> None:
@@ -764,7 +772,7 @@ def main() -> None:
     except Exception:
         pass
     app = App(root)
-    app.log_line("GUI ready. Scan folder, choose section actions, preview, then apply.")
+    app.log_line("GUI 已就绪。扫描文件夹，选择区段操作，预览后应用。")
     root.mainloop()
 
 
